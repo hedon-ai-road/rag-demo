@@ -20,3 +20,4 @@ uv run app.py
 - `sentence-transformers`: for sentence embeddings
 - `faiss-cpu`: for vector similarity search
 - `dashscope`: for LLM inference
+- `openai`: for calling OpenAI/DeepSeek API
