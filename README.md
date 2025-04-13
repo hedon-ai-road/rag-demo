@@ -47,3 +47,9 @@ uv add 'spacy[apple]' # for Apple Silicon
 python -m spacy download zh_core_web_sm # Chinese
 python -m spacy download en_core_web_sm # English
 ```
+
+### Install chromadb
+
+```bash
+uv add chromadb
+```
