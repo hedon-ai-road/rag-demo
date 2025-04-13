@@ -19,6 +19,8 @@ dependencies = [
     "python-docx>=1.1.2",
     "python-pptx>=1.0.2",
     "sentence-transformers>=4.0.2",
+    "setuptools>=78.1.0",
     "spacy[apple]>=3.8.5",
     "unstructured>=0.17.2",
+    "wheel>=0.45.1",
 ]

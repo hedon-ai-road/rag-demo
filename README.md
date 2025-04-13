@@ -42,6 +42,7 @@ uv add unstructured pdfplumber python-docx python-pptx markdown openpyxl pandas
 [spaCy](https://spacy.io/usage)
 
 ```bash
+uv add setuptools wheel
 uv add 'spacy[apple]' # for Apple Silicon
 python -m spacy download zh_core_web_sm # Chinese
 python -m spacy download en_core_web_sm # English

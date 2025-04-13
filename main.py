@@ -1,4 +1,3 @@
-from langchain_text_splitters import RecursiveCharacterTextSplitter; # for splitting documents into chunks
 from sentence_transformers import SentenceTransformer; # for sentence embedding
 import faiss; # for vector similarity search
 import numpy as np; # for numerical operations
@@ -32,6 +31,16 @@ from langchain_community.document_loaders import (
     UnstructuredMarkdownLoader,
     UnstructuredXMLLoader,
     UnstructuredHTMLLoader,
+)
+
+from langchain.text_splitter import (
+    CharacterTextSplitter,
+    RecursiveCharacterTextSplitter,
+    MarkdownTextSplitter,
+    PythonCodeTextSplitter,
+    LatexTextSplitter,
+    SpacyTextSplitter,
+    NLTKTextSplitter,
 )
 
 def load_ducument(file_path):
@@ -81,9 +90,13 @@ def load_folder(folder_path):
         if os.path.isfile(file_path):
             document_text = load_ducument(file_path)
             print(f"Loaded {filename} successfully, the character length is {len(document_text)}.")
-            text_splitter = RecursiveCharacterTextSplitter( 
+
+            # You can choose different text splitters to split the document.
+            # For example, you can use RecursiveCharacterTextSplitter, SpacyTextSplitter, etc.
+            text_splitter = SpacyTextSplitter( 
                 chunk_size=512,
                 chunk_overlap=128,
+                pipeline="zh_core_web_sm", # for spaCy Chinese
             )
             chunks = text_splitter.split_text(document_text)
             print(f"The total number of chunks in the {filename} is {len(chunks)}.")
