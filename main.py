@@ -1,4 +1,3 @@
-from langchain_community.document_loaders import PyPDFLoader; # for loading PDF documents
 from langchain_text_splitters import RecursiveCharacterTextSplitter; # for splitting documents into chunks
 from sentence_transformers import SentenceTransformer; # for sentence embedding
 import faiss; # for vector similarity search
@@ -16,6 +15,83 @@ load_dotenv(); # load environment variables from .env file
 # to avoid running lots of models which would cause conflicts and deadlocks.
 os.environ["TOKENIZERS_PARALLELISM"] = "false";
 
+import warnings
+
+# To use the warning
+warnings.warn("This is a deprecation warning", PendingDeprecationWarning)
+
+
+from langchain_community.document_loaders import (
+    PyPDFLoader,
+    PDFPlumberLoader,
+    TextLoader,
+    UnstructuredWordDocumentLoader,
+    UnstructuredPowerPointLoader,
+    UnstructuredExcelLoader,
+    CSVLoader,
+    UnstructuredMarkdownLoader,
+    UnstructuredXMLLoader,
+    UnstructuredHTMLLoader,
+)
+
+def load_ducument(file_path):
+    """
+    This function is used to load the document from the local directory.
+    :param file_path: the path of the document
+    :return: the string content of the document
+    """
+
+    DOCUMENT_LOADER_MAPPING = {
+        ".pdf": (PDFPlumberLoader, {}),
+        ".txt": (TextLoader, {"encoding": "utf-8"}),
+        ".doc": (UnstructuredWordDocumentLoader, {}),
+        ".docx": (UnstructuredWordDocumentLoader, {}),
+        ".ppt": (UnstructuredPowerPointLoader, {}),
+        ".pptx": (UnstructuredPowerPointLoader, {}),
+        ".xls": (UnstructuredExcelLoader, {}),
+        ".xlsx": (UnstructuredExcelLoader, {}),
+        ".csv": (CSVLoader, {}),
+        ".md": (UnstructuredMarkdownLoader, {}),
+        ".xml": (UnstructuredXMLLoader, {}),
+        ".html": (UnstructuredHTMLLoader, {}),
+    }
+
+    ext = os.path.splitext(file_path)[1]
+    if ext not in DOCUMENT_LOADER_MAPPING:
+        raise ValueError(f"Unsupported file extension: {ext}")
+    
+    loader_class, loader_args = DOCUMENT_LOADER_MAPPING[ext]
+    loader = loader_class(file_path, **loader_args)
+    documents =  loader.load()
+    content = "\n".join([doc.page_content for doc in documents])
+
+    print(f"Loaded {len(documents)} documents from {file_path}, the head is: {content[:100]}")
+    return content
+
+
+def load_folder(folder_path):
+    """
+    This function is used to load the files in the folder.
+    :param folder_path: the path of the folder
+    :return: the string content of the files
+    """
+    all_chunks = []
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        if os.path.isfile(file_path):
+            document_text = load_ducument(file_path)
+            print(f"Loaded {filename} successfully, the character length is {len(document_text)}.")
+            text_splitter = RecursiveCharacterTextSplitter( 
+                chunk_size=512,
+                chunk_overlap=128,
+            )
+            chunks = text_splitter.split_text(document_text)
+            print(f"The total number of chunks in the {filename} is {len(chunks)}.")
+            all_chunks.extend(chunks)
+        elif os.path.isdir(file_path):
+            all_chunks.extend(load_folder(file_path))
+    return all_chunks
+    
 
 def load_embedding_model():
     """
@@ -28,41 +104,26 @@ def load_embedding_model():
     print(f"The largest length of the bge-small-zh-v1.5 model is {embedding_model.max_seq_length}.")
     return embedding_model;
 
-def indexing_process(pdf_file, embedding_model):
+def indexing_process(folder_path, embedding_model):
     """
-    This function is used to index the PDF file.
-    1. Load the PDF file.
-    2. Split the PDF file into chunks.
+    This function is used to index the files in the folder.
+    1. Load the files.
+    2. Split the files into chunks.
     3. Embed the chunks.
     4. Save the chunks to the vector database[faiss].
-    :param pdf_file: the path of the PDF file
+    :param folder_path: the path of the folder
     :param embedding_model: the embedding model
     :return: faiss embedding vector index and segmented text block original content list
     """
-    
-    # Load the PDF file by using PyPDFLoader, ignore the images in the PDF file.
-    pdf_loader = PyPDFLoader(pdf_file, extract_images=False)
 
-    # Split the PDF file into chunks of 512 characters with 128 characters overlap.
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=512,
-        chunk_overlap=128,
-    )
-
-    # Load the PDF file and split it into chunks.
-    pdf_content_list = pdf_loader.load()
-    pdf_text = "\n".join([page.page_content for page in pdf_content_list])
-    print(f"The total number of characters in the PDF file is {len(pdf_text)}.")
-
-    # Split the PDF file into chunks.
-    pdf_chunks = text_splitter.split_text(pdf_text)
-    print(f"The total number of chunks in the PDF file is {len(pdf_chunks)}.")
+    # Load the files in the folder.
+    all_chunks = load_folder(folder_path)
 
     # Convert the chunks into embeddings.
     # normalize_embeddings represents to normalize the embeddings to unit length,
     # for calculating the cosine similarity.
     embeddings = []
-    for chunk in pdf_chunks:
+    for chunk in all_chunks:
         embedding = embedding_model.encode(chunk, normalize_embeddings=True)
         embeddings.append(embedding)
     print("The embeddings have been converted successfully.")
@@ -79,7 +140,7 @@ def indexing_process(pdf_file, embedding_model):
     index.add(embeddings_np)
     print("The Faiss index has been created successfully.")
 
-    return index, pdf_chunks
+    return index, all_chunks
 
 
 def retrieval_process(query, index, chunks, embedding_model, top_k=3):
@@ -141,13 +202,13 @@ def generate_process(query, chunks):
     
     # Invoke LLM API to generate the answer.
     client = OpenAI(
-        base_url="https://api.deepseek.com/v1",
-        api_key=os.getenv("DEEPSEEK_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
     )
 
     try:
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model="deepseek/deepseek-chat-v3-0324:free",
             messages=[{"role": "user", "content": prompt}],
             stream=True,
         )
@@ -172,7 +233,7 @@ def main():
 
     query = "下面报告中涉及了几个行业的案例以及总结各自面临的挑战？"
     embedding_model = load_embedding_model()
-    index, chunks = indexing_process("fixtures/test_doc.pdf", embedding_model)
+    index, chunks = indexing_process("fixtures", embedding_model)
     chunks = retrieval_process(query, index, chunks, embedding_model)
     answer = generate_process(query, chunks)
     print(f"The answer is:\n{answer}")

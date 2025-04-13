@@ -21,3 +21,28 @@ uv run app.py
 - `faiss-cpu`: for vector similarity search
 - `dashscope`: for LLM inference
 - `openai`: for calling OpenAI/DeepSeek API
+
+## Helps
+
+### Install LibreOffice for doc/docx files
+
+```bash
+brew install --cask libreoffice # macOS
+sudo apt-get install libreoffice # Ubuntu
+```
+
+### Install basic dependencies for each type of file
+
+```bash
+uv add unstructured pdfplumber python-docx python-pptx markdown openpyxl pandas
+```
+
+### Install SpacyTextSplitter
+
+[spaCy](https://spacy.io/usage)
+
+```bash
+uv add 'spacy[apple]' # for Apple Silicon
+python -m spacy download zh_core_web_sm # Chinese
+python -m spacy download en_core_web_sm # English
+```
