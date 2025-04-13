@@ -60,3 +60,9 @@ uv add chromadb
 uv add rank_bm25
 uv add jieba # for Chinese
 ```
+
+### Install FlagEmbedding and Peft
+
+```bash
+uv add FlagEmbedding peft
+```

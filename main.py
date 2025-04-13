@@ -155,6 +155,28 @@ def indexing_process(folder_path, embedding_model, collection):
     )
     print("The documents have been inserted into the vector database successfully.")
     print("**************************************************")
+
+from FlagEmbedding import FlagReranker # for reranking
+
+def reranking(query, chunks, top_k=3):
+    """
+    Reranking Process: rerank the chunks according to the query.
+    :param query: the query
+    :param chunks: the segmented text block original content list
+    :param top_k: the number of chunks to return
+    """
+    reranker = FlagReranker("BAAI/bge-reranker-v2-m3", use_fp16=True)
+    input_pairs = [[query, chunk] for chunk in chunks]
+    scores = reranker.compute_score(input_pairs, normalize=True)
+    print(f"The scores of the reranked chunks are: {scores}")
+    sorted_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+    reranked_chunks = [chunks[i] for i in sorted_indices[:top_k]]
+    for i in range(top_k):
+        print(f"reranked chunk {i+1}: similarity score {scores[sorted_indices[i]]}, chunk content: {reranked_chunks[i]}\n")
+    print("**************************************************")
+    return reranked_chunks
+
+
 from rank_bm25 import BM25Okapi
 import jieba
 
@@ -206,12 +228,12 @@ def retrieval_process(query, collection, embedding_model=None, top_k=3):
         print(f"BM25 rank: {rank+1}")
         print(f"BM25 chunk: \n{doc}\n")
 
-    # Combine the vector chunks and BM25 chunks.
-    combined_chunks = vector_chunks + bm25_chunks
+    # Reranking the combined chunks.
+    reranking_chunks = reranking(query,vector_chunks + bm25_chunks, top_k)
 
     print("Finish retrieval process!")
     print("**************************************************")
-    return combined_chunks
+    return reranking_chunks
 
 def generate_process(query, chunks):
     """
