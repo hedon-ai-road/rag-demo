@@ -53,3 +53,10 @@ python -m spacy download en_core_web_sm # English
 ```bash
 uv add chromadb
 ```
+
+### Install rank_bm25 and jieba
+
+```bash
+uv add rank_bm25
+uv add jieba # for Chinese
+```

@@ -123,6 +123,7 @@ def load_embedding_model():
     embedding_model = SentenceTransformer(os.path.abspath("bge-small-zh-v1.5"))
     print("Embedding model loaded successfully.")
     print(f"The largest length of the bge-small-zh-v1.5 model is {embedding_model.max_seq_length}.")
+    print("**************************************************")
     return embedding_model;
 
 def indexing_process(folder_path, embedding_model, collection):
@@ -153,9 +154,11 @@ def indexing_process(folder_path, embedding_model, collection):
         documents=all_chunks,
     )
     print("The documents have been inserted into the vector database successfully.")
+    print("**************************************************")
+from rank_bm25 import BM25Okapi
+import jieba
 
-
-def retrieval_process(query, collection, embedding_model, top_k=3):
+def retrieval_process(query, collection, embedding_model=None, top_k=3):
     """
     Retrieval Process: transform the query into an embedding vector,
     then use the Faiss index to find the top k most similar chunks,
@@ -165,31 +168,51 @@ def retrieval_process(query, collection, embedding_model, top_k=3):
     :param chunks: the segmented text block original content list
     :param embedding_model: the embedding model
     :param top_k: the number of chunks to return
+    :return: the combined chunks
     """
 
     # Transform the query into an embedding vector.
     query_embedding = embedding_model.encode(query, normalize_embeddings=True).tolist()
 
-    # Query the vector database.
-    results = collection.query(
+    # Query the vector database and get the top k most similar chunks.
+    vector_results = collection.query(
         query_embeddings=[query_embedding],
         n_results=top_k,
     )
-    
     print(f"The query is: {query}")
     print(f"The top {top_k} most similar chunks are:")
-    
-    retrieved_chunks = []
-    for doc_id, doc, score in zip(results["ids"][0], results["documents"][0], results["distances"][0]):
+    vector_chunks = []
+    for rank, (doc_id, doc) in enumerate(zip(vector_results["ids"][0], vector_results["documents"][0])):
+        print(f"rank: {rank+1}")
         print(f"chunk_id: {doc_id}")
-        print(f"chunk: {doc}")
-        print(f"score: {score}")
-        retrieved_chunks.append(doc)
-    
-    print(f"Retrieval success!")
-    return retrieved_chunks
-    
-    
+        print(f"chunk: \n{doc}\n")
+        print(f"score: {vector_results['distances'][0][rank]}")
+        vector_chunks.append(doc)
+
+    # Get all documents from charomadb collection.
+    all_docs = collection.get()['documents']
+
+    # Tokenize the all documents.
+    tokenized_corpus = [list(jieba.cut(doc)) for doc in all_docs]
+
+    # Use BM25 algorithm to retrieve the top k most similar chunks.
+    bm25 = BM25Okapi(tokenized_corpus)
+    tokenized_query = list(jieba.cut(query))
+    bm25_scores = bm25.get_scores(tokenized_query)
+    bm25_top_k_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:top_k]
+    bm25_chunks = [all_docs[i] for i in bm25_top_k_indices]
+    print(f"The top {top_k} most similar chunks by BM25 are:")
+    for rank, doc in enumerate(bm25_chunks):
+        print(f"BM25 rank: {rank+1}")
+        print(f"BM25 chunk: \n{doc}\n")
+
+    # Combine the vector chunks and BM25 chunks.
+    combined_chunks = vector_chunks + bm25_chunks
+
+    print("Finish retrieval process!")
+    print("**************************************************")
+    return combined_chunks
+
 def generate_process(query, chunks):
     """
     Generate Process: invoke LLM API to generate the answer according to the query and the retrieved chunks.
