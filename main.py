@@ -252,8 +252,8 @@ def generate_process(query, chunks):
     
     # Invoke LLM API to generate the answer.
     client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1", # use deepseek api can set it to https://api.deepseek.com/v1
+        api_key=os.getenv("OPENROUTER_API_KEY"), # use deepseek api can set it to os.getenv("DEEPSEEK_API_KEY")
     )
 
     try:

@@ -1,8 +1,19 @@
 # rag-demo
 
+## Prepare LLM Keys
+
+- [DeepSeek](https://platform.deepseek.com/usage)
+- [OpenRouter](https://openrouter.ai/settings/keys)
+
+```bash
+echo "DEEPSEEK_API_KEY=your_deepseek_api_key" >> .env
+echo "OPENROUTER_API_KEY=your_openrouter_api_key" >> .env
+```
+
 ## Install Requirements
 
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh # install uv
 uv sync
 ```
 
